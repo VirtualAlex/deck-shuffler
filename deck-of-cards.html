@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deck Shuffler</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #0f5132;
+            color: white;
+        }
+        
+        .container {
+            text-align: center;
+            background: #198754;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .card-display {
+            background: white;
+            color: black;
+            padding: 60px;
+            margin: 20px 0;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            min-height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #333;
+            flex-direction: column;
+        }
+        
+        .card-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            text-align: center;
+        }
+        
+        .card-image {
+            max-width: 180px;
+            max-height: 240px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .card-short-name {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 0;
+        }
+        
+        .card-long-name {
+            font-size: 18px;
+            font-weight: normal;
+            margin: 0;
+        }
+        
+        .buttons {
+            margin: 20px 0;
+        }
+        
+        button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            margin: 0 10px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #bb2d3b;
+        }
+        
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .seed-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+        }
+        
+        .seed-input {
+            padding: 10px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            width: 200px;
+        }
+        
+        .current-seed {
+            margin: 10px 0;
+            font-family: monospace;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .deck-info {
+            margin: 20px 0;
+            font-size: 18px;
+        }
+        
+        .red-card {
+            color: #dc3545;
+        }
+        
+        .black-card {
+            color: #000;
+        }
+        
+        .history-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            text-align: left;
+        }
+        
+        .history-display {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        
+        .history-card {
+            display: inline-flex;
+            align-items: center;
+            margin: 2px 5px;
+            padding: 3px 6px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 3px;
+            font-size: 14px;
+            gap: 5px;
+        }
+        
+        .history-card img {
+            width: 20px;
+            height: 25px;
+        }
+        
+        .history-card.red {
+            color: #dc3545;
+        }
+        
+        .history-card.black {
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Deck Shuffler</h1>
+        
+        <div class="deck-info">
+            <div>Cards remaining: <span id="cardsRemaining">52</span></div>
+            <div style="margin-top: 10px;">
+                <label>
+                    <input type="checkbox" id="useJokersCheckbox" onchange="toggleJokers()" style="margin-right: 8px;">
+                    Include Jokers
+                </label>
+            </div>
+        </div>
+        
+        <div class="card-display" id="cardDisplay">
+            Click "Draw Card" to start!
+        </div>
+        
+        <div class="buttons">
+            <button id="drawBtn" onclick="drawCard()">Draw Card</button>
+            <button id="reshuffleBtn" onclick="reshuffle()">Reshuffle Deck</button>
+        </div>
+        
+        <div class="history-section">
+            <h3>Card History</h3>
+            <div class="history-display" id="historyDisplay">
+                No cards drawn yet.
+            </div>
+        </div>
+        
+        <div class="seed-section">
+            <h3>Seed Management</h3>
+            <div class="current-seed">
+                Current Seed: <span id="currentSeed">-</span>
+            </div>
+            <div>
+                <input type="text" id="seedInput" class="seed-input" placeholder="Enter seed code">
+                <button onclick="loadSeed()">Load Seed</button>
+                <button onclick="copySeed()">Copy Current Seed</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SeededRandom {
+            constructor(seed) {
+                this.seed = seed;
+                this.m = 0x80000000;
+                this.a = 1103515245;
+                this.c = 12345;
+                this.state = seed ? seed : Math.floor(Math.random() * (this.m - 1));
+            }
+            
+            nextInt() {
+                this.state = (this.a * this.state + this.c) % this.m;
+                return this.state;
+            }
+            
+            nextFloat() {
+                return this.nextInt() / (this.m - 1);
+            }
+        }
+
+        let deck = [];
+        let currentDeck = [];
+        let rng;
+        let currentSeed;
+        let cardHistory = [];
+
+        const suits = ['♠', '♥', '♦', '♣'];
+        const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+        const suitNames = ['Spades', 'Hearts', 'Diamonds', 'Clubs'];
+
+        function getImageFileName(rank, suitName) {
+            if (rank === 'Red Joker' || rank === 'Black Joker') {
+                return `images/${rank.toLowerCase().replace(' ', '_')}.svg`;
+            }
+            
+            const mappedSuit = suitName.toLowerCase();
+            return `images/${rank}_of_${mappedSuit}.svg`;
+        }
+        
+        function createDeck() {
+            deck = [];
+            
+            // Add regular cards
+            for (let suit = 0; suit < suits.length; suit++) {
+                for (let rank = 0; rank < ranks.length; rank++) {
+                    const card = {
+                        suit: suits[suit],
+                        rank: ranks[rank],
+                        suitName: suitNames[suit],
+                        isRed: suit === 1 || suit === 2
+                    };
+                    card.imagePath = getImageFileName(card.rank, card.suitName);
+                    deck.push(card);
+                }
+            }
+            
+            // Add jokers if enabled
+            const useJokers = document.getElementById('useJokersCheckbox')?.checked || false;
+            if (useJokers) {
+                const redJoker = {
+                    suit: '🃏',
+                    rank: 'Red Joker',
+                    suitName: 'Joker',
+                    isRed: true
+                };
+                redJoker.imagePath = getImageFileName(redJoker.rank, redJoker.suitName);
+                deck.push(redJoker);
+                
+                const blackJoker = {
+                    suit: '🃏',
+                    rank: 'Black Joker',
+                    suitName: 'Joker',
+                    isRed: false
+                };
+                blackJoker.imagePath = getImageFileName(blackJoker.rank, blackJoker.suitName);
+                deck.push(blackJoker);
+            }
+        }
+
+        function shuffleDeck(seed = null) {
+            if (seed !== null) {
+                currentSeed = seed;
+            } else {
+                currentSeed = Math.floor(Math.random() * 1000000000);
+            }
+            
+            rng = new SeededRandom(currentSeed);
+            currentDeck = [...deck];
+            
+            for (let i = currentDeck.length - 1; i > 0; i--) {
+                const j = Math.floor(rng.nextFloat() * (i + 1));
+                [currentDeck[i], currentDeck[j]] = [currentDeck[j], currentDeck[i]];
+            }
+            
+            updateUI();
+        }
+
+        function drawCard() {
+            if (currentDeck.length === 0) {
+                document.getElementById('cardDisplay').innerHTML = 'No cards left! Please reshuffle.';
+                document.getElementById('drawBtn').disabled = true;
+                return;
+            }
+            
+            const card = currentDeck.pop();
+            cardHistory.push(card);
+            
+            const cardDisplay = document.getElementById('cardDisplay');
+            
+            const shortName = card.rank === 'Red Joker' || card.rank === 'Black Joker' ? 
+                card.rank.replace(' ', '') : 
+                card.rank + card.suit;
+            
+            cardDisplay.innerHTML = `
+                <div class="card-content">
+                    <div class="card-short-name ${card.isRed ? 'red-card' : 'black-card'}">
+                        ${shortName}
+                    </div>
+                    <img src="${card.imagePath}" alt="${card.rank} of ${card.suitName}" class="card-image" onerror="this.style.display='none'">
+                    <div class="card-long-name ${card.isRed ? 'red-card' : 'black-card'}">
+                        ${card.rank} of ${card.suitName}
+                    </div>
+                </div>
+            `;
+            
+            updateUI();
+        }
+
+        function toggleJokers() {
+            createDeck();
+            shuffleDeck(currentSeed);
+            cardHistory = [];
+            document.getElementById('cardDisplay').innerHTML = 'Deck updated! Click "Draw Card" to start.';
+            document.getElementById('drawBtn').disabled = false;
+        }
+        
+        function reshuffle() {
+            createDeck();
+            shuffleDeck();
+            cardHistory = [];
+            document.getElementById('cardDisplay').innerHTML = 'Deck reshuffled! Click "Draw Card" to start.';
+            document.getElementById('drawBtn').disabled = false;
+        }
+
+        function loadSeed() {
+            const seedInput = document.getElementById('seedInput');
+            const seed = parseInt(seedInput.value);
+            
+            if (isNaN(seed)) {
+                alert('Please enter a valid number for the seed.');
+                return;
+            }
+            
+            createDeck();
+            shuffleDeck(seed);
+            cardHistory = [];
+            document.getElementById('cardDisplay').innerHTML = 'Deck loaded with seed! Click "Draw Card" to start.';
+            document.getElementById('drawBtn').disabled = false;
+            seedInput.value = '';
+        }
+
+        function copySeed() {
+            navigator.clipboard.writeText(currentSeed.toString()).then(() => {
+                alert('Seed copied to clipboard!');
+            }).catch(() => {
+                prompt('Copy this seed:', currentSeed.toString());
+            });
+        }
+
+        function clearHistory() {
+            cardHistory = [];
+            updateUI();
+        }
+        
+        function updateUI() {
+            document.getElementById('cardsRemaining').textContent = currentDeck.length;
+            document.getElementById('currentSeed').textContent = currentSeed || '-';
+            
+            const historyDisplay = document.getElementById('historyDisplay');
+            if (cardHistory.length === 0) {
+                historyDisplay.innerHTML = 'No cards drawn yet.';
+            } else {
+                historyDisplay.innerHTML = cardHistory.map((card, index) => 
+                    `<span class="history-card ${card.isRed ? 'red' : 'black'}">
+                        <img src="${card.imagePath}" alt="${card.rank} of ${card.suitName}" onerror="this.style.display='none'">
+                        ${index + 1}. ${card.rank}${card.suit}
+                    </span>`
+                ).join('');
+            }
+        }
+
+        createDeck();
+        shuffleDeck();
+    </script>
+</body>
+</html>
