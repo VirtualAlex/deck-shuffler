@@ -244,13 +244,16 @@
         const suitNames = ['Spades', 'Hearts', 'Diamonds', 'Clubs'];
 
         function getImageFileName(rank, suitName) {
-            if (rank === 'Red Joker' || rank === 'Black Joker') {
-                return `images/${rank.toLowerCase().replace(' ', '_')}.svg`;
-            }
-            
-            const mappedSuit = suitName.toLowerCase();
-            return `images/${rank}_of_${mappedSuit}.svg`;
-        }
+    if (rank === 'Red Joker' || rank === 'Black Joker') {
+        return `images/${rank.toLowerCase().replace(' ', '_')}.svg`;
+    }
+    
+    // Convert rank to lowercase to match your image file names
+    const mappedRank = rank.toLowerCase();
+    const mappedSuit = suitName.toLowerCase();
+    
+    return `images/${mappedRank}_of_${mappedSuit}.svg`;
+}
         
         function createDeck() {
             deck = [];
